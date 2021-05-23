@@ -1,0 +1,13 @@
+APP_HOST = ''
+APP_PORT = 
+APP_CERT = ""
+APP_KEY =  ""
+APP_DEV = True
+
+DB_HOST = ''
+DB_USER = ''
+DB_PASSWORD = ''
+DB_DATABASE = '' 
+
+SECRET_KEY = ""
+PW_SALT = ""
