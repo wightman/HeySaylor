@@ -1,7 +1,7 @@
 #
 # app/api.py
 # 
-import os
+import os, glob
 from datetime import  date, time, datetime, timedelta
 from typing import Tuple, Optional, Any
 
@@ -34,23 +34,20 @@ app.add_middleware(HTTPSRedirectMiddleware)
 
 ## CORS overrides for development
 #
-if settings.APP_DEV:
-    from fastapi.middleware.cors import CORSMiddleware
-    origins = [
-        "http://localhost",
-        "http://localhost:8080",
-        "http://localhost:8000",
-        "https://192.168.2.108:8000"
-    ]
-
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    print("Accepting origins: ", origins)
+#if settings.APP_DEV:
+#    from fastapi.middleware.cors import CORSMiddleware
+#    origins = [
+#        "http://localhost"
+#    ]
+#
+#    app.add_middleware(
+#        CORSMiddleware,
+#        allow_origins=origins,
+#        allow_credentials=True,
+#        allow_methods=["*"],
+#        allow_headers=["*"],
+#    )
+#    print("Accepting origins: ", origins)
 
 ## Session things
 #
@@ -84,7 +81,7 @@ async def favicon():
 ## /sessions: POST, DELETE
 #
 
-# curl -i --user 'wightman@unb.ca:J0lly R0g3r!' -X 'POST' \
+# curl -i --insecure --user 'wightman@unb.ca:J0lly R0g3r!' -X 'POST' \
 #  -c cookie_jar 'http://127.0.0.1:8000/sessions' \
 #  -H 'accept: application/json' \
 #  -d ''
@@ -109,11 +106,8 @@ async def login(response: Response, session_info: Optional[SessionInfo] = Depend
 #
 @app.delete("/sessions", status_code=204)
 async def logout(response: Response, session_info: Optional[SessionInfo]  = Depends(session)):
-    if not session_info:
-        raise HTTPException(
-            status_code=403,
-            detail="Not authenticated"
-        )
+    print (session_info)
+    loggedIn(session_info)
     await session.end_session(session_info[0], response)
     return {"message": "Logged out"}
 
@@ -131,12 +125,12 @@ async def createSaylor(saylor_post: SaylorPost, session_info: Optional[SessionIn
 @app.get("/saylors")
 async def getSaylors(session_info: Optional[SessionInfo]  = Depends(session)):
     loggedIn(session_info)
-    sqlProc = 'getSaylors'
+    sqlProc = 'getSaylorsComponent'
     sqlArgs = ()
     saylors = dbAccess(sqlProc, sqlArgs)
     return saylors
 
-## /saylors: get, update, delete
+## /saylors/{saylorId}: get, update, delete
 #
 @app.get("/saylors/{saylor_id}")
 async def getSaylor(saylor_id: int, session_info: Optional[SessionInfo]  = Depends(session)):
@@ -162,3 +156,26 @@ async def deleteSaylors(saylor_id: int, session_info: Optional[SessionInfo]  = D
     sqlArgs = (saylor_id)
     return {"message": "deleteSaylor"}
 
+## /saylors/{saylorId}/wills/{willNo}: get, update, delete
+#
+#  Management of wills as a weak entity of saylors. Wills are stored as pdfs on
+#   the file system (in pwd/wills), named in the form lastName-firstName-SaylorId-WillNo
+willPath = os.getcwd()
+willPath = os.path.join(willPath,"docs")
+willPath = os.path.join(willPath,"wills")
+@app.get("/saylors/{saylor_id}/wills/{willNo}")
+async def getSaylorWill(saylor_id: int, willNo: int):
+    files = "*-"+str(saylor_id)+"-"+str(willNo)+".pdf"
+    filePath = os.path.join(willPath,files)
+    wills = glob.glob(filePath)
+    print(filePath)
+    # should be only one!
+    if len(wills) == 1:
+        #normal
+        return FileResponse(wills[0], media_type="application/pdf")
+    else:
+        #weirdness
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to find unique will"
+        )
