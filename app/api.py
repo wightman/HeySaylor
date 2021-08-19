@@ -6,9 +6,8 @@ from datetime import  date, time, datetime, timedelta
 from typing import Tuple, Optional, Any
 
 from fastapi import FastAPI, Depends, Response, HTTPException
+from fastapi import File, Form, UploadFile
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-
-#from fastapi.security import OAuth2PasswordBearer
 
 from pydantic import BaseModel
 
@@ -102,11 +101,11 @@ async def login(response: Response, session_info: Optional[SessionInfo] = Depend
 
     return userSession
 
-# curl -X DELETE -b cookie_jar 'http://127.0.0.1:8000/sessions'
+# curl -X DELETE --insecure -b cookie_jar 'http://127.0.0.1:8000/sessions'
 #
 @app.delete("/sessions", status_code=204)
 async def logout(response: Response, session_info: Optional[SessionInfo]  = Depends(session)):
-    print (session_info)
+    #print (session_info)
     loggedIn(session_info)
     await session.end_session(session_info[0], response)
     return {"message": "Logged out"}
@@ -120,7 +119,8 @@ async def createSaylor(saylor_post: SaylorPost, session_info: Optional[SessionIn
     sqlProc = 'postSaylor'
     sqlArgs = ()
     return {"message": "createSaylor"}
-# curl -X GET -b cookie_jar 'http://127.0.0.1:8000/saylors'
+
+# curl -X GET --insecure -b cookie_jar 'http://127.0.0.1:8000/saylors'
 #
 @app.get("/saylors")
 async def getSaylors(session_info: Optional[SessionInfo]  = Depends(session)):
@@ -131,6 +131,8 @@ async def getSaylors(session_info: Optional[SessionInfo]  = Depends(session)):
     return saylors
 
 ## /saylors/{saylorId}: get, update, delete
+#
+# curl -X GET --insecure -b cookie_jar 'http://127.0.0.1:8000/saylors/3'
 #
 @app.get("/saylors/{saylor_id}")
 async def getSaylor(saylor_id: int, session_info: Optional[SessionInfo]  = Depends(session)):
@@ -159,16 +161,19 @@ async def deleteSaylors(saylor_id: int, session_info: Optional[SessionInfo]  = D
 ## /saylors/{saylorId}/wills/{willNo}: get, update, delete
 #
 #  Management of wills as a weak entity of saylors. Wills are stored as pdfs on
-#   the file system (in pwd/wills), named in the form lastName-firstName-SaylorId-WillNo
+#   the file system (in pwd/wills), named in the form lastName-firstName-SaylorId-WillNo.pdf
+
 willPath = os.getcwd()
 willPath = os.path.join(willPath,"docs")
 willPath = os.path.join(willPath,"wills")
+
+# curl -X GET --insecure -b cookie_jar 'http://127.0.0.1:8000/saylors/3/wills/1'
+#
 @app.get("/saylors/{saylor_id}/wills/{willNo}")
 async def getSaylorWill(saylor_id: int, willNo: int):
     files = "*-"+str(saylor_id)+"-"+str(willNo)+".pdf"
     filePath = os.path.join(willPath,files)
     wills = glob.glob(filePath)
-    print(filePath)
     # should be only one!
     if len(wills) == 1:
         #normal
@@ -179,3 +184,67 @@ async def getSaylorWill(saylor_id: int, willNo: int):
             status_code=400,
             detail="Unable to find unique will"
         )
+
+#curl -i --insecure  -X 'POST' \
+#  -b cookie_jar 'https://0.0.0.0:8000/saylors/3/wills' \
+#  -F 'dateOfWill=1962-12-27'\
+#  -F 'documentName=Wightman-Rick-3-1.pdf'\
+#  -F 'fileb=@./Wightman-Rick-3-1.pdf'\
+#  -H 'Content-Type: multipart/form-data'
+
+@app.post("/saylors/{saylor_id}/wills")
+async def postSaylorWill(saylor_id: int,
+    fileb: UploadFile = File(...),
+    documentName: str = Form(...),
+    dateOfWill: date = Form(...),
+    notes: Optional[str] = Form(None),
+    session_info: Optional[SessionInfo] = Depends(session), status_code=201):
+    # willNum is 1 - only first wills can be uploaded
+    # token should hold the form data : documentName, dateOfWill, notes, userId
+    # fileb is the actual pdf
+    #
+    loggedIn(session_info)
+    user = session_info[1]
+    createdBy = user.userId
+    # Steps of development:
+    # 4. add will record.
+
+    filename = os.path.join(willPath, documentName)
+    # Does it exist? Quit
+    if os.path.exists(filename):
+        return ({
+            "status" : "error",
+            "message": "File exists"
+        })
+    try:
+        f = open(filename, 'wb')
+        content = await file.read()
+    except Exception as e:
+        if hasattr(e, 'message'):
+            return ({
+                "status" : "error",
+                "message": e.message
+            })
+    try:
+        f.write(content)
+    except Exception as e:
+        if hasattr(e, 'message'):
+            return ({
+                "status" : "error",
+                "message": e.message
+            })    
+    finally:
+        f.close()
+    #4.
+    sqlProc = 'addWill'
+    sqlArgs = (saylor_id, 1, documentName, dateOfWill, notes, createdBy)
+    try:
+        dbAccess(sqlProc, sqlArgs)
+    except Exception as e:
+        if hasattr(e, 'message'):
+            return ({
+                "status" : "error",
+                "message": e.message
+            })
+    # We're done!
+    return {"status": "success"}
