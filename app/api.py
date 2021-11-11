@@ -188,27 +188,30 @@ async def getSaylorWill(saylor_id: int, willNo: int):
 #curl -i --insecure  -X 'POST' \
 #  -b cookie_jar 'https://0.0.0.0:8000/saylors/3/wills' \
 #  -F 'dateOfWill=1962-12-27'\
-#  -F 'documentName=Wightman-Rick-3-1.pdf'\
+#  -F 'saylorName='Wightman-Rick'\
 #  -F 'fileb=@./Wightman-Rick-3-1.pdf'\
 #  -H 'Content-Type: multipart/form-data'
 
-@app.post("/saylors/{saylor_id}/wills")
-async def postSaylorWill(saylor_id: int,
+@app.post("/saylors/{saylorId}/wills", status_code=201)
+async def postSaylorWill(saylorId: int,
     fileb: UploadFile = File(...),
-    documentName: str = Form(...),
-    dateOfWill: date = Form(...),
+    saylorName: str = Form(...),
+    dateOfWill: str = Form(...),
     notes: Optional[str] = Form(None),
-    session_info: Optional[SessionInfo] = Depends(session), status_code=201):
+    session_info: Optional[SessionInfo] = Depends(session) ):
+    
     # willNum is 1 - only first wills can be uploaded
-    # token should hold the form data : documentName, dateOfWill, notes, userId
-    # fileb is the actual pdf
+    # token should hold the form data : file, dateOfWill, saylorName, notes.
+    # file is the actual pdf
     #
     loggedIn(session_info)
     user = session_info[1]
     createdBy = user.userId
-    # Steps of development:
-    # 4. add will record.
+    print(saylorId)
+    print(saylorName)
+    print(dateOfWill)
 
+    documentName=saylorName+"-"+str(saylorId)+"-1.pdf"
     filename = os.path.join(willPath, documentName)
     # Does it exist? Quit
     if os.path.exists(filename):
@@ -218,12 +221,17 @@ async def postSaylorWill(saylor_id: int,
         })
     try:
         f = open(filename, 'wb')
-        content = await file.read()
+        content = await fileb.read()
     except Exception as e:
         if hasattr(e, 'message'):
             return ({
                 "status" : "error",
                 "message": e.message
+            })
+        else:
+            return({
+                "status" : "error",
+                "message" : str(e)
             })
     try:
         f.write(content)
@@ -237,7 +245,7 @@ async def postSaylorWill(saylor_id: int,
         f.close()
     #4.
     sqlProc = 'addWill'
-    sqlArgs = (saylor_id, 1, documentName, dateOfWill, notes, createdBy)
+    sqlArgs = (saylorId, 1, documentName, dateOfWill, notes, createdBy)
     try:
         dbAccess(sqlProc, sqlArgs)
     except Exception as e:
@@ -247,4 +255,6 @@ async def postSaylorWill(saylor_id: int,
                 "message": e.message
             })
     # We're done!
-    return {"status": "success"}
+    print(documentName)
+    return {"willFile": documentName}
+
