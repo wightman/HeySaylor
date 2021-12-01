@@ -1,6 +1,9 @@
 # HeySaylor
 Sailor Management for the Seventeenth Century
 
+## Version 0.4.1
+- Will upload is based on presence of a probate date, not will date.
+  
 ## Version 0.4
 - Will documents can be uploaded along with the form data for a record for the Wills table
 

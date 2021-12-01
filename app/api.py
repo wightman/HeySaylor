@@ -169,7 +169,7 @@ willPath = os.path.join(willPath,"wills")
 
 # curl -X GET --insecure -b cookie_jar 'http://127.0.0.1:8000/saylors/3/wills/1'
 #
-@app.get("/saylors/{saylor_id}/wills/{willNo}")
+@app.get("/saylors/{saylor_id}/willdocs/{willNo}")
 async def getSaylorWill(saylor_id: int, willNo: int):
     files = "*-"+str(saylor_id)+"-"+str(willNo)+".pdf"
     filePath = os.path.join(willPath,files)
@@ -192,11 +192,11 @@ async def getSaylorWill(saylor_id: int, willNo: int):
 #  -F 'fileb=@./Wightman-Rick-3-1.pdf'\
 #  -H 'Content-Type: multipart/form-data'
 
-@app.post("/saylors/{saylorId}/wills", status_code=201)
+@app.post("/saylors/{saylorId}/willdocs", status_code=201)
 async def postSaylorWill(saylorId: int,
     fileb: UploadFile = File(...),
     saylorName: str = Form(...),
-    dateOfWill: str = Form(...),
+    dateOfProbate: str = Form(...),
     notes: Optional[str] = Form(None),
     session_info: Optional[SessionInfo] = Depends(session) ):
     
@@ -207,9 +207,6 @@ async def postSaylorWill(saylorId: int,
     loggedIn(session_info)
     user = session_info[1]
     createdBy = user.userId
-    print(saylorId)
-    print(saylorName)
-    print(dateOfWill)
 
     documentName=saylorName+"-"+str(saylorId)+"-1.pdf"
     filename = os.path.join(willPath, documentName)
@@ -245,7 +242,7 @@ async def postSaylorWill(saylorId: int,
         f.close()
     #4.
     sqlProc = 'addWill'
-    sqlArgs = (saylorId, 1, documentName, dateOfWill, notes, createdBy)
+    sqlArgs = (saylorId, 1, documentName, dateOfProbate, notes, createdBy)
     try:
         dbAccess(sqlProc, sqlArgs)
     except Exception as e:
@@ -255,6 +252,5 @@ async def postSaylorWill(saylorId: int,
                 "message": e.message
             })
     # We're done!
-    print(documentName)
     return {"willFile": documentName}
 
