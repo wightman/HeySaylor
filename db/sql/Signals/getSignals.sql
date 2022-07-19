@@ -1,0 +1,9 @@
+DROP PROCEDURE getSignals;
+DELIMITER //
+CREATE PROCEDURE getSignals(
+) 
+BEGIN 
+    SELECT * 
+        FROM Signals;
+END//
+DELIMITER ;

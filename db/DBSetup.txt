@@ -1,0 +1,9 @@
+DB Setup
+- MariaDB 10.3.29-MariaDB-0ubuntu0.20.04.1
+- root user (no password) ceated admin with all priviledges
+- admin/JesusL0vesMe!
+- CREATE DATABASE HeySaylor;
+- CREATE USER 'saylor'@'localhost' IDENTIFIED BY 'J0llR0g3r!';
+- GRANT ALL PRIVILEGES ON HeySaylor.* TO 'saylor'@'localhost';
+- moved database from dev to prod: mysqldump --routines -u root -p HeySaylor >HeySaylor.sql
+- imported to prod: mysql -u admin -p HeySaylor < HeySaylor.sql
