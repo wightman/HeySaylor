@@ -1,6 +1,9 @@
 # HeySaylor
 Sailor Management for the Seventeenth Century
 
+# Version 0.4.5
+- Database modification for full CRUD operaions on Saylors table.
+
 ## Version 0.4.1
 - Will upload is based on presence of a probate date, not will date.
   
