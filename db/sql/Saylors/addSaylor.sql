@@ -21,5 +21,6 @@ BEGIN
     SIGNAL SQLSTATE '51501'
     SET MESSAGE_TEXT = 'Saylor not added.';
   END IF;
+  SELECT LAST_INSERT_ID() AS saylorId;
 END//
 DELIMITER ;
